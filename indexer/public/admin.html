@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>知识库管理 — KnowledgeBase Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+SC:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --border: #2a2a35;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans SC', 'PingFang SC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo span { color: var(--muted); display: block; font-size: 10px; margin-top: 2px; letter-spacing: 0.2em; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; font-size: 13px; color: var(--muted);
+    cursor: pointer; transition: all .15s; border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,212,255,.05); }
+  .nav-item .icon { font-size: 16px; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar h1 { font-size: 15px; font-weight: 500; }
+  .topbar .stats-bar { display: flex; gap: 20px; }
+  .stat { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .stat strong { color: var(--accent); }
+
+  .content { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* ── PANELS ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
+  }
+
+  /* ── FORM ELEMENTS ── */
+  .row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .row .grow { flex: 1; }
+
+  input[type=text], select {
+    width: 100%; padding: 9px 12px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  input[type=text]:focus, select:focus { border-color: var(--accent); }
+  input[type=text]::placeholder { color: var(--muted); }
+
+  .btn {
+    padding: 9px 18px; border-radius: 6px; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    transition: all .15s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #00eeff; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-secondary:hover { background: #35354a; }
+  .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; font-size: 12px; }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── UPLOAD DROP ZONE ── */
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: 8px;
+    padding: 40px; text-align: center; cursor: pointer;
+    transition: all .2s; position: relative;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(0,212,255,.04); }
+  .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .dropzone .dz-icon { font-size: 36px; margin-bottom: 8px; }
+  .dropzone .dz-text { font-size: 13px; color: var(--muted); }
+  .dropzone .dz-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+  /* ── PROGRESS LOG ── */
+  .progress-log {
+    font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 14px;
+    max-height: 260px; overflow-y: auto; margin-top: 12px;
+    display: none;
+  }
+  .progress-log.show { display: block; }
+  .log-line { padding: 1px 0; }
+  .log-line.success { color: var(--success); }
+  .log-line.error { color: var(--danger); }
+  .log-line.warn { color: var(--warn); }
+  .log-line.info { color: var(--accent); }
+  .log-line.muted { color: var(--muted); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar-wrap { background: var(--bg); border-radius: 4px; height: 4px; margin-top: 10px; display: none; overflow: hidden; }
+  .progress-bar-wrap.show { display: block; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; width: 0%; }
+
+  /* ── DOCUMENTS TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+       letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+       border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-family: var(--mono);
+  }
+  .badge-blue { background: rgba(0,212,255,.15); color: var(--accent); }
+  .badge-purple { background: rgba(124,58,237,.2); color: #a78bfa; }
+
+  .path-text { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .chunk-count { font-family: var(--mono); color: var(--accent); }
+
+  .empty-state {
+    text-align: center; padding: 60px; color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* ── SETTINGS ── */
+  .kv-row { display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .kv-row:last-child { border-bottom: none; }
+  .kv-key { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .kv-val { font-family: var(--mono); color: var(--text); }
+
+  /* ── SCROLL ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">KB ADMIN<span>KNOWLEDGE BASE</span></div>
+    <div class="nav-item active" data-panel="index" onclick="switchPanel(this)">
+      <span class="icon">⚡</span> 索引文档
+    </div>
+    <div class="nav-item" data-panel="docs" onclick="switchPanel(this)">
+      <span class="icon">📚</span> 文档列表
+    </div>
+    <div class="nav-item" data-panel="settings" onclick="switchPanel(this)">
+      <span class="icon">⚙️</span> 系统设置
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <h1>知识库管理后台</h1>
+      <div class="stats-bar">
+        <div class="stat">文档 <strong id="stat-docs">—</strong></div>
+        <div class="stat">文本块 <strong id="stat-chunks">—</strong></div>
+        <div class="stat">已向量化 <strong id="stat-emb">—</strong></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- ── 索引面板 ── -->
+      <div class="panel active" id="panel-index">
+
+        <!-- 上传文件 -->
+        <div class="card">
+          <div class="card-title">📎 上传 Markdown 文件</div>
+          <div class="row">
+            <select id="upload-category" style="width:160px;flex-shrink:0">
+              <option value="general">general</option>
+              <option value="guide">guide</option>
+              <option value="api">api</option>
+              <option value="tutorial">tutorial</option>
+              <option value="reference">reference</option>
+            </select>
+          </div>
+          <div class="dropzone" id="dropzone"
+               ondragover="event.preventDefault();this.classList.add('dragover')"
+               ondragleave="this.classList.remove('dragover')"
+               ondrop="handleDrop(event)">
+            <input type="file" accept=".md" multiple onchange="handleFileInput(this)" />
+            <div class="dz-icon">📄</div>
+            <div class="dz-text">点击选择或拖入 .md 文件</div>
+            <div class="dz-sub">支持批量上传 · 自动 chunk + embed + upsert</div>
+          </div>
+          <div class="progress-bar-wrap" id="upload-bar"><div class="progress-bar-fill" id="upload-bar-fill"></div></div>
+          <div class="progress-log" id="upload-log"></div>
+        </div>
+
+        <!-- 索引本地目录 -->
+        <div class="card">
+          <div class="card-title">📁 索引服务器本地目录</div>
+          <div class="row">
+            <input type="text" id="dir-path" class="grow" placeholder="/docs/my-project" />
+            <select id="dir-category" style="width:140px;flex-shrink:0">
+              <option value="general">general</option>
+              <option value="guide">guide</option>
+              <option value="api">api</option>
+              <option value="tutorial">tutorial</option>
+              <option value="reference">reference</option>
+            </select>
+            <button class="btn btn-primary" onclick="indexDir()">开始索引</button>
+          </div>
+          <div class="progress-bar-wrap" id="dir-bar"><div class="progress-bar-fill" id="dir-bar-fill"></div></div>
+          <div class="progress-log" id="dir-log"></div>
+        </div>
+
+        <!-- 初始化 -->
+        <div class="card">
+          <div class="card-title">🔧 数据库初始化</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            首次使用前，点击初始化创建数据表、BM25 全文索引和向量索引。
+          </p>
+          <button class="btn btn-secondary" onclick="initDb()">初始化 Schema</button>
+          <span id="init-result" style="font-family:var(--mono);font-size:12px;margin-left:12px;"></span>
+        </div>
+      </div>
+
+      <!-- ── 文档列表面板 ── -->
+      <div class="panel" id="panel-docs">
+        <div class="card" style="padding:0">
+          <div style="padding:18px 24px 14px;display:flex;justify-content:space-between;align-items:center">
+            <span class="card-title" style="margin:0">已索引文档</span>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="loadDocs()">刷新</button>
+          </div>
+          <div id="docs-table-wrap">
+            <div class="empty-state">加载中…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 设置面板 ── -->
+      <div class="panel" id="panel-settings">
+        <div class="card">
+          <div class="card-title">环境配置</div>
+          <div id="env-display">
+            <div class="empty-state">加载中…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Panel switching ───────────────────────────────────────────────────
+function switchPanel(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  const name = el.dataset.panel;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'docs') loadDocs();
+  if (name === 'settings') loadSettings();
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stats').then(r => r.json());
+    if (r.ok) {
+      document.getElementById('stat-docs').textContent = r.data.doc_count;
+      document.getElementById('stat-chunks').textContent = r.data.chunk_count;
+      document.getElementById('stat-emb').textContent = r.data.embedded_count;
+    }
+  } catch {}
+}
+loadStats();
+setInterval(loadStats, 10000);
+
+// ── Init DB ───────────────────────────────────────────────────────────
+async function initDb() {
+  const el = document.getElementById('init-result');
+  el.textContent = '初始化中…'; el.style.color = 'var(--accent)';
+  try {
+    const r = await fetch('/api/init', { method: 'POST' }).then(r => r.json());
+    if (r.ok) { el.textContent = '✅ 成功'; el.style.color = 'var(--success)'; }
+    else { el.textContent = '❌ ' + r.error; el.style.color = 'var(--danger)'; }
+  } catch (e) {
+    el.textContent = '❌ ' + e.message; el.style.color = 'var(--danger)';
+  }
+}
+
+// ── Progress log helpers ──────────────────────────────────────────────
+function appendLog(logId, msg, type = '') {
+  const log = document.getElementById(logId);
+  log.classList.add('show');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog(id) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  el.classList.add('show');
+}
+
+function setProgress(barId, fillId, pct) {
+  document.getElementById(barId).classList.add('show');
+  document.getElementById(fillId).style.width = pct + '%';
+}
+
+// ── SSE reader ────────────────────────────────────────────────────────
+async function consumeSSE(response, logId, barId, fillId) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const p = JSON.parse(line.slice(6));
+        handleProgress(p, logId, barId, fillId);
+      } catch {}
+    }
+  }
+}
+
+function handleProgress(p, logId, barId, fillId) {
+  const stage = p.stage;
+  if (stage === 'scan') appendLog(logId, p.message || `扫描: ${p.file}`, 'info');
+  else if (stage === 'chunk') appendLog(logId, p.message || `切分中…`, 'muted');
+  else if (stage === 'embed') {
+    if (p.current !== undefined && p.total) {
+      const pct = Math.round(p.current / p.total * 100);
+      setProgress(barId, fillId, 50 + pct / 2);
+      appendLog(logId, `向量化进度: ${p.current}/${p.total}`, 'muted');
+    }
+  }
+  else if (stage === 'upsert') appendLog(logId, p.message || '写入数据库…', 'muted');
+  else if (stage === 'done') {
+    setProgress(barId, fillId, 100);
+    appendLog(logId, p.message || '完成', 'success');
+    loadStats();
+  }
+  else if (stage === 'error') appendLog(logId, p.message, 'error');
+}
+
+// ── File upload ───────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('dragover');
+  const files = [...e.dataTransfer.files].filter(f => f.name.endsWith('.md'));
+  if (files.length) uploadFiles(files);
+}
+
+function handleFileInput(input) {
+  const files = [...input.files];
+  if (files.length) uploadFiles(files);
+  input.value = '';
+}
+
+async function uploadFiles(files) {
+  clearLog('upload-log');
+  setProgress('upload-bar', 'upload-bar-fill', 5);
+  const category = document.getElementById('upload-category').value;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    appendLog('upload-log', `上传 (${i+1}/${files.length}): ${file.name}`, 'info');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('category', category);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      await consumeSSE(res, 'upload-log', 'upload-bar', 'upload-bar-fill');
+    } catch (e) {
+      appendLog('upload-log', '❌ ' + e.message, 'error');
+    }
+  }
+}
+
+// ── Index directory ───────────────────────────────────────────────────
+async function indexDir() {
+  const path = document.getElementById('dir-path').value.trim();
+  if (!path) { alert('请输入目录路径'); return; }
+  const category = document.getElementById('dir-category').value;
+  clearLog('dir-log');
+  setProgress('dir-bar', 'dir-bar-fill', 5);
+
+  try {
+    const res = await fetch('/api/index/directory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, category }),
+    });
+    await consumeSSE(res, 'dir-log', 'dir-bar', 'dir-bar-fill');
+  } catch (e) {
+    appendLog('dir-log', '❌ ' + e.message, 'error');
+  }
+}
+
+// ── Documents list ────────────────────────────────────────────────────
+async function loadDocs() {
+  const wrap = document.getElementById('docs-table-wrap');
+  wrap.innerHTML = '<div class="empty-state">加载中…</div>';
+  try {
+    const r = await fetch('/api/documents').then(r => r.json());
+    if (!r.ok) throw new Error(r.error);
+    if (!r.data.length) {
+      wrap.innerHTML = '<div class="empty-state">暂无文档，请先索引</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>标题</th><th>分类</th><th>文本块</th><th>路径</th><th>更新时间</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${r.data.map(d => `
+            <tr>
+              <td>${esc(d.title)}</td>
+              <td><span class="badge badge-blue">${esc(d.category)}</span></td>
+              <td class="chunk-count">${d.chunk_count}</td>
+              <td class="path-text">${esc(d.file_path)}</td>
+              <td class="path-text">${new Date(d.updated_at).toLocaleString('zh-CN')}</td>
+              <td><button class="btn btn-danger" onclick="deleteDoc(${d.id}, this)">删除</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty-state" style="color:var(--danger)">${e.message}</div>`;
+  }
+}
+
+async function deleteDoc(id, btn) {
+  if (!confirm('确认删除该文档及其所有文本块？')) return;
+  btn.disabled = true;
+  try {
+    await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+    loadDocs(); loadStats();
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────
+function loadSettings() {
+  const vars = {
+    'DATABASE_URL': '(from env)',
+    'EMBEDDING_API_URL': window.__env?.EMBEDDING_API_URL || '(from env)',
+    'EMBEDDING_MODEL': window.__env?.EMBEDDING_MODEL || '(from env)',
+    'EMBEDDING_DIM': window.__env?.EMBEDDING_DIM || '(from env)',
+    'INDEXER_PORT': window.__env?.INDEXER_PORT || '3001',
+    'SEARCH_PORT': window.__env?.SEARCH_PORT || '3000',
+  };
+  document.getElementById('env-display').innerHTML = Object.entries(vars).map(([k, v]) =>
+    `<div class="kv-row"><span class="kv-key">${k}</span><span class="kv-val">${v}</span></div>`
+  ).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

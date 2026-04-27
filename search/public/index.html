@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>技术知识库</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --border: #e8e5de;
+    --accent: #1a1a2e;
+    --accent2: #c84b31;
+    --muted: #8a8278;
+    --text: #1c1c1e;
+    --tag-bg: #f0ede6;
+    --code-bg: #f5f2eb;
+    --shadow: 0 2px 20px rgba(0,0,0,.06);
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Noto Serif SC', serif;
+    --sans: 'Space Grotesk', 'PingFang SC', sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111110;
+      --surface: #1c1b1a;
+      --border: #2e2c2a;
+      --accent: #e8e2d9;
+      --accent2: #e06c4c;
+      --muted: #6b6560;
+      --text: #e4dfd8;
+      --tag-bg: #252320;
+      --code-bg: #1e1d1b;
+      --shadow: 0 2px 20px rgba(0,0,0,.3);
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(250,250,248,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 max(24px, calc(50vw - 500px));
+    display: flex; align-items: center; gap: 16px;
+    height: 60px;
+  }
+  @media (prefers-color-scheme: dark) {
+    header { background: rgba(17,17,16,.92); }
+  }
+  .logo-text {
+    font-family: var(--mono); font-size: 14px; font-weight: 500;
+    color: var(--accent); white-space: nowrap;
+    letter-spacing: -0.02em;
+  }
+  .logo-text em { color: var(--accent2); font-style: normal; }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px 6px 14px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .search-wrap:focus-within {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 3px rgba(200,75,49,.08);
+  }
+  .search-icon { color: var(--muted); font-size: 15px; flex-shrink: 0; }
+  #search-input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-family: var(--sans); font-size: 14px; color: var(--text);
+  }
+  #search-input::placeholder { color: var(--muted); }
+
+  select#category-filter {
+    border: none; background: transparent; font-family: var(--mono);
+    font-size: 12px; color: var(--muted); cursor: pointer; outline: none;
+  }
+
+  .search-btn {
+    padding: 6px 16px; background: var(--accent); color: var(--bg);
+    border: none; border-radius: 6px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: opacity .15s; white-space: nowrap;
+    font-family: var(--sans);
+  }
+  .search-btn:hover { opacity: .85; }
+  .search-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── MAIN LAYOUT ── */
+  .container {
+    max-width: 1000px; margin: 0 auto; padding: 40px 24px;
+    display: grid; grid-template-columns: 1fr 280px; gap: 32px;
+  }
+  @media (max-width: 768px) {
+    .container { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+
+  /* ── ANSWER AREA ── */
+  .answer-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px; box-shadow: var(--shadow);
+    min-height: 120px; display: none;
+  }
+  .answer-wrap.show { display: block; }
+
+  .answer-meta {
+    font-size: 11px; font-family: var(--mono); color: var(--muted);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .answer-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); }
+  .status-text { color: var(--accent2); }
+
+  .answer-body {
+    font-family: var(--serif); font-size: 15px; line-height: 1.85;
+    color: var(--text);
+  }
+
+  /* Markdown rendered styles */
+  .answer-body h1, .answer-body h2, .answer-body h3 {
+    font-family: var(--sans); font-weight: 600; margin: 20px 0 10px;
+    color: var(--text);
+  }
+  .answer-body h2 { font-size: 16px; }
+  .answer-body h3 { font-size: 14px; }
+  .answer-body p { margin: 10px 0; }
+  .answer-body code {
+    font-family: var(--mono); font-size: 12px; background: var(--code-bg);
+    padding: 2px 6px; border-radius: 4px; color: var(--accent2);
+  }
+  .answer-body pre {
+    background: var(--code-bg); border-radius: 8px; padding: 16px;
+    overflow-x: auto; margin: 14px 0; border: 1px solid var(--border);
+  }
+  .answer-body pre code {
+    background: none; padding: 0; color: var(--text); font-size: 13px;
+  }
+  .answer-body ul, .answer-body ol {
+    padding-left: 20px; margin: 10px 0;
+  }
+  .answer-body li { margin: 4px 0; }
+  .answer-body blockquote {
+    border-left: 3px solid var(--accent2); padding-left: 14px;
+    color: var(--muted); margin: 12px 0;
+  }
+  .answer-body strong { font-weight: 600; color: var(--text); }
+  .answer-body hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .answer-body table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+  .answer-body th, .answer-body td { border: 1px solid var(--border); padding: 6px 10px; }
+  .answer-body th { background: var(--tag-bg); font-weight: 500; }
+
+  /* cursor blink */
+  .cursor {
+    display: inline-block; width: 2px; height: 1em;
+    background: var(--accent2); margin-left: 2px;
+    animation: blink 1s step-start infinite; vertical-align: text-bottom;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── SOURCES SIDEBAR ── */
+  .sidebar {}
+  .sources-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  }
+  .source-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+    transition: border-color .15s; cursor: default;
+  }
+  .source-card:hover { border-color: var(--accent2); }
+  .source-num {
+    font-family: var(--mono); font-size: 10px; color: var(--accent2);
+    font-weight: 500; margin-bottom: 4px;
+  }
+  .source-doc { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+  .source-heading {
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .score-bar {
+    display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .score-tag {
+    font-family: var(--mono); font-size: 10px; padding: 2px 6px;
+    border-radius: 3px; background: var(--tag-bg); color: var(--muted);
+  }
+  .score-tag.bm25 { color: #2563eb; background: rgba(37,99,235,.1); }
+  .score-tag.vec { color: #16a34a; background: rgba(22,163,74,.1); }
+
+  /* ── EMPTY / WELCOME ── */
+  .welcome {
+    grid-column: 1 / -1; text-align: center; padding: 80px 20px;
+  }
+  .welcome h2 {
+    font-family: var(--serif); font-size: 28px; font-weight: 300;
+    color: var(--text); margin-bottom: 12px;
+  }
+  .welcome p { color: var(--muted); font-size: 14px; max-width: 400px; margin: 0 auto; }
+  .welcome .hint {
+    margin-top: 32px; display: flex; gap: 12px; justify-content: center;
+    flex-wrap: wrap;
+  }
+  .hint-tag {
+    background: var(--tag-bg); border: 1px solid var(--border);
+    border-radius: 20px; padding: 6px 14px; font-size: 12px; color: var(--muted);
+    cursor: pointer; transition: all .15s;
+  }
+  .hint-tag:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-text">KB<em>/</em>SEARCH</div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search-input" placeholder="输入技术问题…" autocomplete="off" />
+    <select id="category-filter">
+      <option value="">全部分类</option>
+      <option value="general">general</option>
+      <option value="guide">guide</option>
+      <option value="api">api</option>
+      <option value="tutorial">tutorial</option>
+      <option value="reference">reference</option>
+    </select>
+  </div>
+  <button class="search-btn" id="search-btn" onclick="doSearch()">提问</button>
+</header>
+
+<div class="container" id="main-container">
+  <div class="welcome" id="welcome">
+    <h2>技术知识库</h2>
+    <p>基于 ParadeDB 的全文检索 + 向量语义搜索，BM25 与向量 RRF 混合精排</p>
+    <div class="hint">
+      <span class="hint-tag" onclick="fillQuery(this)">如何配置认证？</span>
+      <span class="hint-tag" onclick="fillQuery(this)">API 限流策略</span>
+      <span class="hint-tag" onclick="fillQuery(this)">部署最佳实践</span>
+      <span class="hint-tag" onclick="fillQuery(this)">错误码说明</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Simple Markdown renderer ─────────────────────────────────────────
+function renderMarkdown(md) {
+  // 先保护代码块
+  const codeBlocks = [];
+  md = md.replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    codeBlocks.push(`<pre><code class="lang-${lang}">${esc(code.trim())}</code></pre>`);
+    return `\x00CODE${codeBlocks.length - 1}\x00`;
+  });
+
+  md = md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // restore code blocks (already escaped correctly)
+    .replace(/&lt;pre&gt;/g, '<pre>').replace(/&lt;\/pre&gt;/g, '</pre>')
+    .replace(/\x00CODE(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)])
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/^---+$/gm, '<hr>')
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  return '<p>' + md + '</p>';
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── State ─────────────────────────────────────────────────────────────
+let currentController = null;
+let rawAnswer = '';
+let renderTimer = null;
+
+function fillQuery(el) {
+  document.getElementById('search-input').value = el.textContent;
+  doSearch();
+}
+
+// ── Main search ───────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+
+  if (currentController) currentController.abort();
+  currentController = new AbortController();
+
+  const category = document.getElementById('category-filter').value;
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  btn.textContent = '检索中…';
+
+  // Build layout
+  const container = document.getElementById('main-container');
+  container.innerHTML = `
+    <div>
+      <div class="answer-wrap show" id="answer-wrap">
+        <div class="answer-meta">
+          <div class="dot"></div>
+          <span class="status-text" id="status-text">正在检索…</span>
+        </div>
+        <div class="answer-body" id="answer-body"></div>
+      </div>
+    </div>
+    <div class="sidebar" id="sources-panel">
+      <div class="sources-title">引用来源</div>
+      <div id="sources-list"><div style="font-size:12px;color:var(--muted)">检索中…</div></div>
+    </div>`;
+
+  rawAnswer = '';
+
+  try {
+    const url = `/api/ask?q=${encodeURIComponent(q)}${category ? '&category=' + category : ''}`;
+    const res = await fetch(url, { signal: currentController.signal });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          handleEvent(evt);
+        } catch {}
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      const body = document.getElementById('answer-body');
+      if (body) body.innerHTML = `<span style="color:#ef4444">❌ ${esc(e.message)}</span>`;
+    }
+  } finally {
+    // Remove cursor
+    const cursor = document.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    btn.disabled = false;
+    btn.textContent = '提问';
+  }
+}
+
+function handleEvent(evt) {
+  const { type, data } = evt;
+
+  if (type === 'status') {
+    const el = document.getElementById('status-text');
+    if (el) el.textContent = data;
+  }
+
+  else if (type === 'sources') {
+    const list = document.getElementById('sources-list');
+    if (!list) return;
+    list.innerHTML = data.map((s, i) => `
+      <div class="source-card">
+        <div class="source-num">[${i+1}]</div>
+        <div class="source-doc">${esc(s.docTitle)}</div>
+        <div class="source-heading">${esc(s.heading)}</div>
+        <div class="score-bar">
+          ${s.bm25Score != null ? `<span class="score-tag bm25">BM25 ${s.bm25Score.toFixed(2)}</span>` : ''}
+          ${s.vectorScore != null ? `<span class="score-tag vec">VEC ${s.vectorScore.toFixed(3)}</span>` : ''}
+          <span class="score-tag">RRF ${s.rrfScore.toFixed(4)}</span>
+        </div>
+      </div>`).join('');
+
+    const statusEl = document.getElementById('status-text');
+    if (statusEl) statusEl.textContent = '正在生成回答…';
+  }
+
+  else if (type === 'answer_chunk') {
+    rawAnswer += data;
+    scheduleRender();
+  }
+
+  else if (type === 'error') {
+    const body = document.getElementById('answer-body');
+    if (body) body.innerHTML += `<span style="color:#ef4444">❌ ${esc(data)}</span>`;
+  }
+
+  else if (type === 'done') {
+    flushRender();
+    const statusEl = document.getElementById('status-text');
+    if (statusEl) {
+      statusEl.textContent = '回答完成';
+      statusEl.style.color = 'var(--muted)';
+    }
+    const dot = document.querySelector('.dot');
+    if (dot) dot.style.background = 'var(--muted)';
+  }
+}
+
+// Throttled render for smooth typewriter effect
+function scheduleRender() {
+  if (renderTimer) return;
+  renderTimer = setTimeout(() => {
+    renderTimer = null;
+    flushRender(true);
+  }, 40);
+}
+
+function flushRender(withCursor = false) {
+  const body = document.getElementById('answer-body');
+  if (!body) return;
+  const cursor = withCursor ? '<span class="cursor"></span>' : '';
+  body.innerHTML = renderMarkdown(rawAnswer) + cursor;
+  // Auto scroll
+  body.scrollIntoView({ block: 'end', behavior: 'smooth' });
+}
+
+// ── Keyboard shortcut ─────────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+</script>
+</body>
+</html>

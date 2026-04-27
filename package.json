@@ -1,0 +1,19 @@
+{
+  "name": "kb",
+  "version": "1.0.0",
+  "workspaces": ["shared", "indexer", "search"],
+  "scripts": {
+    "db:init": "bun run shared/db.ts",
+    "dev:indexer": "bun run --watch indexer/index.ts",
+    "dev:search": "bun run --watch search/index.ts",
+    "dev": "bun run --bun concurrently \"bun run dev:indexer\" \"bun run dev:search\""
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "postgres": "^3.4.4",
+    "concurrently": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

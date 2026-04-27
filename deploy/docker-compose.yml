@@ -1,0 +1,52 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 升级时只改这一处，与 Dockerfile ARG 默认值保持一致即可
+        PARADEDB_VERSION: "0.22.5-pg17"
+        PG_MAJOR: "17"
+    image: kb-paradedb:0.22.5-pg17   # 本地镜像名，方便识别版本
+    container_name: kb-paradedb
+    env_file: .env
+    ports:
+      - "127.0.0.1:5432:5432"        # 只绑定本地，不暴露到公网
+    volumes:
+      - paradedb_data:/var/lib/postgresql/data
+    restart: no
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: 
+      - app-net      
+
+  # 可选：pgAdmin 管理 UI，访问 http://localhost:8088
+  pgadmin:
+    image: dpage/pgadmin4:9.2          # 锁定 pgadmin 版本
+    container_name: kb-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "127.0.0.1:8088:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: no
+    networks: 
+      - app-net
+
+volumes:
+  paradedb_data:
+  pgadmin_data:
+    
+networks: 
+  app-net:
+    external: true    
+
