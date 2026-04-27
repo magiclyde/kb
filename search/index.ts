@@ -110,6 +110,11 @@ app.get("/api/ask", async (c) => {
     return c.json({ ok: false, error: "query is empty" }, 400);
   }
 
+  // 显式声明 SSE，避免浏览器/代理缓冲导致前端读流异常
+  c.header("Content-Type", "text/event-stream; charset=utf-8");
+  c.header("Cache-Control", "no-cache, no-transform");
+  c.header("Connection", "keep-alive");
+
   return stream(c, async (s) => {
     const send = (type: string, data: unknown) =>
       s.write(`data: ${JSON.stringify({ type, data })}\n\n`);
@@ -153,11 +158,15 @@ app.get("/api/ask", async (c) => {
       const spec = getProviderSpec(providerParam, systemPrompt, userPrompt);
       send("status", `正在调用 ${providerParam} 生成回答…`);
 
+      const llmTimeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || "120000");
+      const aborter = new AbortController();
+      const timeout = setTimeout(() => aborter.abort(), llmTimeoutMs);
       const llmRes = await fetch(spec.url, {
         method: "POST",
         headers: spec.headers,
         body: JSON.stringify(spec.body),
-      });
+        signal: aborter.signal,
+      }).finally(() => clearTimeout(timeout));
 
       if (!llmRes.ok) {
         const err = await llmRes.text();
@@ -166,7 +175,7 @@ app.get("/api/ask", async (c) => {
         return;
       }
 
-      // ── 4. 通用流式解析逻辑 ─────────────────────────────────────────
+      // ── 4. 通用流式解析逻辑 (SSE: data: <json>) ─────────────────────
       const reader = llmRes.body!.getReader();
       const decoder = new TextDecoder();
       let buf = "";
@@ -184,9 +193,8 @@ app.get("/api/ask", async (c) => {
           if (raw === "[DONE]") continue;
           try {
             const evt = JSON.parse(raw);
-            if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
-              send("answer_chunk", evt.delta.text);
-            }
+            const delta = spec.parse(evt);
+            if (delta) send("answer_chunk", delta);
           } catch {}
         }
       }
