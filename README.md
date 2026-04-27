@@ -41,11 +41,13 @@ bun run dev:search
 ## 环境变量
 
 ```env
-DATABASE_URL=postgres://user:pass@localhost:5432/paradedb
+DATABASE_URL=postgres://user:pass@localhost:5432/knowledge_base
 EMBEDDING_API_URL=http://localhost:11434/v1   # Ollama 或 OpenAI 兼容
 EMBEDDING_API_KEY=ollama
-EMBEDDING_MODEL=nomic-embed-text
+EMBEDDING_MODEL=nomic-embed-text:v1.5
 EMBEDDING_DIM=768
-LLM_API_URL=https://api.anthropic.com/v1
-LLM_API_KEY=sk-...
+LLM_PROVIDER=ollama
+LLM_API_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=qwen2.5:7b
 ```

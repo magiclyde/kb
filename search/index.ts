@@ -13,8 +13,65 @@ import { join } from "path";
 const app = new Hono();
 const PORT = parseInt(process.env.SEARCH_PORT || "3000");
 
-const LLM_API_URL = process.env.LLM_API_URL || "https://api.anthropic.com/v1";
-const LLM_API_KEY = process.env.LLM_API_KEY || "";
+// ── LLM 配置策略 ──────────────────────────────────────────────────────
+const LLM_CONFIG = {
+  provider: process.env.LLM_PROVIDER || "ollama", // 可选: 'anthropic' | 'ollama' | 'openai'
+  baseUrl: process.env.LLM_API_URL || "http://localhost:11434/v1",
+  apiKey: process.env.LLM_API_KEY || "ollama",
+  model: process.env.LLM_MODEL || "qwen2.5:7b",
+};
+
+/**
+ * 获取特定 Provider 的请求参数
+ */
+function getProviderSpec(provider: string, systemPrompt: string, userPrompt: string) {
+  const specs: Record<string, any> = {
+    anthropic: {
+      url: `${LLM_CONFIG.baseUrl}/messages`,
+      headers: {
+        "x-api-key": LLM_CONFIG.apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: {
+        model: LLM_CONFIG.model,
+        max_tokens: 2048,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      },
+      // 解析器：处理 Anthropic 的 SSE 数据块
+      parse: (rawJson: any) => {
+        if (rawJson.type === "content_block_delta" && rawJson.delta?.type === "text_delta") {
+          return rawJson.delta.text;
+        }
+        return null;
+      }
+    },
+    ollama: { // 以及 OpenAI 兼容接口
+      url: `${LLM_CONFIG.baseUrl}/chat/completions`,
+      headers: {
+        "Authorization": `Bearer ${LLM_CONFIG.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: {
+        model: LLM_CONFIG.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        stream: true,
+      },
+      // 解析器：处理 OpenAI/Ollama 的 SSE 数据块
+      parse: (rawJson: any) => {
+        return rawJson.choices?.[0]?.delta?.content || null;
+      }
+    }
+  };
+
+  return specs[provider] || specs["ollama"];
+}
+
 
 // ── 静态文件 ──────────────────────────────────────────────────────────
 app.use("/static/*", serveStatic({ root: "./search" }));
@@ -47,6 +104,7 @@ app.get("/api/search", async (c) => {
 app.get("/api/ask", async (c) => {
   const query = c.req.query("q") || "";
   const category = c.req.query("category") || undefined;
+  const providerParam = c.req.query("provider") || LLM_CONFIG.provider; // 允许 query 参数动态切换
 
   if (!query.trim()) {
     return c.json({ ok: false, error: "query is empty" }, 400);
@@ -91,33 +149,14 @@ app.get("/api/ask", async (c) => {
 
       const userPrompt = `文档片段:\n${context}\n\n问题: ${query}`;
 
-      // ── 3. 调用 LLM 流式输出 ────────────────────────────────────
-      send("status", "正在生成回答…");
+      // ── 3. 获取 Provider 具体的请求规格, 调用 LLM 流式输出 ────────────────────────────────────
+      const spec = getProviderSpec(providerParam, systemPrompt, userPrompt);
+      send("status", `正在调用 ${providerParam} 生成回答…`);
 
-      if (!LLM_API_KEY) {
-        // 没有 LLM 配置时，直接返回最相关的块内容
-        send("answer_chunk", `根据知识库检索到以下相关内容：\n\n`);
-        for (const chunk of chunks.slice(0, 3)) {
-          send("answer_chunk", `**${chunk.docTitle} > ${chunk.heading}**\n\n${chunk.plainText}\n\n---\n\n`);
-        }
-        send("done", null);
-        return;
-      }
-
-      const llmRes = await fetch(`${LLM_API_URL}/messages`, {
+      const llmRes = await fetch(spec.url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": LLM_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-opus-4-6",
-          max_tokens: 2048,
-          stream: true,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
-        }),
+        headers: spec.headers,
+        body: JSON.stringify(spec.body),
       });
 
       if (!llmRes.ok) {
@@ -127,6 +166,7 @@ app.get("/api/ask", async (c) => {
         return;
       }
 
+      // ── 4. 通用流式解析逻辑 ─────────────────────────────────────────
       const reader = llmRes.body!.getReader();
       const decoder = new TextDecoder();
       let buf = "";
@@ -164,4 +204,5 @@ console.log(`🔍 检索服务启动: http://localhost:${PORT}`);
 export default {
   port: PORT,
   fetch: app.fetch,
+  idleTimeout: 60,
 };
