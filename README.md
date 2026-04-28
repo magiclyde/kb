@@ -18,6 +18,7 @@ kb/
 │       └── admin.html     # 后台 UI
 └── search/                # 前端检索服务 (port 3000)
     ├── index.ts
+    ├── cache.ts           # 轻量级 LRU + TTL 内存缓存
     ├── retriever.ts       # 全文 + 向量混合检索 + RRF 精排
     └── public/
         └── index.html     # 检索 UI
@@ -46,14 +47,20 @@ bun run dev:search
 
 ```env
 DATABASE_URL=postgres://user:pass@localhost:5432/knowledge_base
+
+# Embedding: 支持 Ollama (本地) 或任意 OpenAI 兼容接口
 EMBEDDING_API_URL=http://localhost:11434/v1   # Ollama 或 OpenAI 兼容
 EMBEDDING_API_KEY=ollama
 EMBEDDING_MODEL=nomic-embed-text:v1.5
 EMBEDDING_DIM=768
+
+# LLM (用于 RAG 精排回答，可选)
 LLM_PROVIDER=ollama
 LLM_API_URL=http://localhost:11434/v1
 LLM_API_KEY=ollama
 LLM_MODEL=qwen2.5:7b
+
+# OCR（图片转文本，依赖本地 tesseract）
 OCR_LANG=chi_sim+eng
 
 # 通用缓存配置（检索缓存与 /api/ask 回答缓存默认共用）
