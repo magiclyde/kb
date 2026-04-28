@@ -135,7 +135,12 @@ app.post("/api/upload", async (c) => {
       s.write(`data: ${JSON.stringify(data)}\n\n`);
 
     try {
-      const result = await indexFile(tmpPath, category, (p) => send(p));
+      const result = await indexFile(
+        tmpPath,
+        category,
+        (p) => send(p),
+        { documentPath: `upload://${file.name}` }
+      );
       send({ stage: "done", result, fileName: file.name });
     } catch (e: any) {
       send({ stage: "error", message: e.message });

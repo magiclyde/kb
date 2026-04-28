@@ -26,6 +26,9 @@ export interface IndexProgress {
 }
 
 export type ProgressCallback = (p: IndexProgress) => void;
+export interface IndexFileOptions {
+  documentPath?: string;
+}
 
 /**
  * 索引单个 Markdown / 图片文件
@@ -33,32 +36,33 @@ export type ProgressCallback = (p: IndexProgress) => void;
 export async function indexFile(
   filePath: string,
   category: string = "general",
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  options: IndexFileOptions = {}
 ): Promise<{ chunksInserted: number; skipped: boolean }> {
   const report = (p: IndexProgress) => onProgress?.(p);
+  const documentPath = options.documentPath || filePath;
 
-  const document = await loadIndexableDocument(filePath, report);
+  const document = await loadIndexableDocument(filePath, documentPath, report);
   const rawContent = document.content;
   const fileHash = document.fileHash;
   const title = document.title;
-  const fileName = filePath;
 
   report({
     stage: "scan",
-    file: filePath,
+    file: documentPath,
     message: `读取${document.sourceType === "image_ocr" ? "图片" : "文件"}: ${title}`,
   });
 
   // ── 检查是否需要重新索引 ──────────────────────────────────────────
   const existing = await sql`
-    SELECT id, file_hash FROM documents WHERE file_path = ${fileName}
+    SELECT id, file_hash FROM documents WHERE file_path = ${documentPath}
   `;
 
   let docId: bigint;
 
   if (existing.length > 0) {
     if (existing[0].file_hash === fileHash) {
-      report({ stage: "done", file: filePath, message: "文件未变更，跳过" });
+      report({ stage: "done", file: documentPath, message: "文件未变更，跳过" });
       return { chunksInserted: 0, skipped: true };
     }
     // 内容有变更，删除旧 chunks，更新文档记录
@@ -73,37 +77,37 @@ export async function indexFile(
       WHERE id = ${existing[0].id}
     `;
     docId = existing[0].id;
-    report({ stage: "scan", file: filePath, message: "文件已变更，重新索引" });
+    report({ stage: "scan", file: documentPath, message: "文件已变更，重新索引" });
   } else {
     // 新文档
     const [doc] = await sql`
       INSERT INTO documents (title, file_path, file_hash, source_type, category)
-      VALUES (${title}, ${fileName}, ${fileHash}, ${document.sourceType}, ${category})
+      VALUES (${title}, ${documentPath}, ${fileHash}, ${document.sourceType}, ${category})
       RETURNING id
     `;
     docId = doc.id;
   }
 
   // ── Chunking ──────────────────────────────────────────────────────
-  report({ stage: "chunk", file: filePath, message: "按 ## 标题切分..." });
+  report({ stage: "chunk", file: documentPath, message: "按 ## 标题切分..." });
   const chunks = chunkMarkdown(rawContent, { overlapLines: 3, minChunkLength: 80 });
   report({
     stage: "chunk",
-    file: filePath,
+    file: documentPath,
     total: chunks.length,
     message: `切分完成: ${chunks.length} 个块`,
   });
 
   // ── Embedding ─────────────────────────────────────────────────────
-  report({ stage: "embed", file: filePath, total: chunks.length, current: 0 });
+  report({ stage: "embed", file: documentPath, total: chunks.length, current: 0 });
 
   const texts = chunks.map((c) => `${c.heading}\n\n${c.plainText}`);
   const embeddings = await embedBatch(texts, 8);
 
-  report({ stage: "embed", file: filePath, total: chunks.length, current: chunks.length });
+  report({ stage: "embed", file: documentPath, total: chunks.length, current: chunks.length });
 
   // ── Upsert ────────────────────────────────────────────────────────
-  report({ stage: "upsert", file: filePath, message: "写入数据库..." });
+  report({ stage: "upsert", file: documentPath, message: "写入数据库..." });
 
   await sql.begin(async (tx: TransactionSql<Record<string, unknown>>) => {
     for (const [i, chunk] of chunks.entries()) {
@@ -128,7 +132,7 @@ export async function indexFile(
 
   report({
     stage: "done",
-    file: filePath,
+    file: documentPath,
     total: chunks.length,
     message: `✅ 完成，写入 ${chunks.length} 个块`,
   });
@@ -214,6 +218,7 @@ function isIndexableFile(filePath: string): boolean {
 
 async function loadIndexableDocument(
   filePath: string,
+  sourcePath: string,
   report: ProgressCallback
 ): Promise<{
   sourceType: SourceType;
@@ -235,10 +240,10 @@ async function loadIndexableDocument(
   }
 
   if (IMAGE_EXTENSIONS.has(ext)) {
-    report({ stage: "ocr", file: filePath, message: "正在识别图片文字..." });
+    report({ stage: "ocr", file: sourcePath, message: "正在识别图片文字..." });
     const imageBuffer = await readFile(filePath);
     const ocrText = await extractTextFromImage(filePath);
-    const markdown = buildOcrMarkdown(filePath, fileName, ocrText);
+    const markdown = buildOcrMarkdown(sourcePath, fileName, ocrText);
     return {
       sourceType: "image_ocr",
       title: fileName,
