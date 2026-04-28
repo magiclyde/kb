@@ -35,17 +35,18 @@ export async function initSchema() {
       title       TEXT NOT NULL,
       file_path   TEXT UNIQUE NOT NULL,
       file_hash   TEXT NOT NULL,          -- MD5, 用于 upsert 去重
+      source_type TEXT NOT NULL DEFAULT 'markdown',
       category    TEXT DEFAULT 'general',
       created_at  TIMESTAMPTZ DEFAULT NOW(),
       updated_at  TIMESTAMPTZ DEFAULT NOW()
     )
   `;
 
-  // 兼容旧表：如果 file_hash 列不存在则补上
-  // await sql`
-  //   ALTER TABLE documents
-  //     ADD COLUMN IF NOT EXISTS file_hash TEXT NOT NULL DEFAULT ''
-  // `;
+  // 兼容旧表：补齐后续新增字段
+  await sql`
+    ALTER TABLE documents
+      ADD COLUMN IF NOT EXISTS source_type TEXT NOT NULL DEFAULT 'markdown'
+  `;
 
   // ── 文档块表 ──────────────────────────────────────────────────────
   await sql`

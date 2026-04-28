@@ -227,7 +227,7 @@
 
         <!-- 上传文件 -->
         <div class="card">
-          <div class="card-title">📎 上传 Markdown 文件</div>
+          <div class="card-title">📎 上传文档 / 图片</div>
           <div class="row">
             <select id="upload-category" style="width:160px;flex-shrink:0">
               <option value="general">general</option>
@@ -241,10 +241,10 @@
                ondragover="event.preventDefault();this.classList.add('dragover')"
                ondragleave="this.classList.remove('dragover')"
                ondrop="handleDrop(event)">
-            <input type="file" accept=".md" multiple onchange="handleFileInput(this)" />
+            <input type="file" accept=".md,.png,.jpg,.jpeg,.webp" multiple onchange="handleFileInput(this)" />
             <div class="dz-icon">📄</div>
-            <div class="dz-text">点击选择或拖入 .md 文件</div>
-            <div class="dz-sub">支持批量上传 · 自动 chunk + embed + upsert</div>
+            <div class="dz-text">点击选择或拖入 Markdown / 图片文件</div>
+            <div class="dz-sub">支持 .md .png .jpg .jpeg .webp · 图片会先 OCR 再索引</div>
           </div>
           <div class="progress-bar-wrap" id="upload-bar"><div class="progress-bar-fill" id="upload-bar-fill"></div></div>
           <div class="progress-log" id="upload-log"></div>
@@ -253,6 +253,9 @@
         <!-- 索引本地目录 -->
         <div class="card">
           <div class="card-title">📁 索引服务器本地目录</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            自动扫描目录中的 Markdown 和图片文件；图片会先通过本地 Tesseract OCR 提取文字再进入索引流程。
+          </p>
           <div class="row">
             <input type="text" id="dir-path" class="grow" placeholder="/docs/my-project" />
             <select id="dir-category" style="width:140px;flex-shrink:0">
@@ -306,6 +309,8 @@
 </div>
 
 <script>
+const SUPPORTED_EXTENSIONS = ['.md', '.png', '.jpg', '.jpeg', '.webp'];
+
 // ── Panel switching ───────────────────────────────────────────────────
 function switchPanel(el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -390,7 +395,8 @@ async function consumeSSE(response, logId, barId, fillId) {
 
 function handleProgress(p, logId, barId, fillId) {
   const stage = p.stage;
-  if (stage === 'scan') appendLog(logId, p.message || `扫描: ${p.file}`, 'info');
+  if (stage === 'ocr') appendLog(logId, p.message || `OCR 识别中: ${p.file}`, 'info');
+  else if (stage === 'scan') appendLog(logId, p.message || `扫描: ${p.file}`, 'info');
   else if (stage === 'chunk') appendLog(logId, p.message || `切分中…`, 'muted');
   else if (stage === 'embed') {
     if (p.current !== undefined && p.total) {
@@ -412,12 +418,14 @@ function handleProgress(p, logId, barId, fillId) {
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById('dropzone').classList.remove('dragover');
-  const files = [...e.dataTransfer.files].filter(f => f.name.endsWith('.md'));
+  const files = [...e.dataTransfer.files].filter(f => isSupportedFile(f.name));
+  const skipped = e.dataTransfer.files.length - files.length;
+  if (skipped > 0) appendLog('upload-log', `已跳过 ${skipped} 个不支持的文件`, 'warn');
   if (files.length) uploadFiles(files);
 }
 
 function handleFileInput(input) {
-  const files = [...input.files];
+  const files = [...input.files].filter(f => isSupportedFile(f.name));
   if (files.length) uploadFiles(files);
   input.value = '';
 }
@@ -476,12 +484,13 @@ async function loadDocs() {
     wrap.innerHTML = `
       <table>
         <thead><tr>
-          <th>标题</th><th>分类</th><th>文本块</th><th>路径</th><th>更新时间</th><th></th>
+          <th>标题</th><th>来源</th><th>分类</th><th>文本块</th><th>路径</th><th>更新时间</th><th></th>
         </tr></thead>
         <tbody>
           ${r.data.map(d => `
             <tr>
               <td>${esc(d.title)}</td>
+              <td>${renderSourceType(d.source_type)}</td>
               <td><span class="badge badge-blue">${esc(d.category)}</span></td>
               <td class="chunk-count">${d.chunk_count}</td>
               <td class="path-text">${esc(d.file_path)}</td>
@@ -521,6 +530,18 @@ function loadSettings() {
   document.getElementById('env-display').innerHTML = Object.entries(vars).map(([k, v]) =>
     `<div class="kv-row"><span class="kv-key">${k}</span><span class="kv-val">${v}</span></div>`
   ).join('');
+}
+
+function isSupportedFile(fileName) {
+  const lower = String(fileName).toLowerCase();
+  return SUPPORTED_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+
+function renderSourceType(sourceType) {
+  if (sourceType === 'image_ocr') {
+    return '<span class="badge badge-purple">image_ocr</span>';
+  }
+  return '<span class="badge badge-blue">markdown</span>';
 }
 
 function esc(s) {

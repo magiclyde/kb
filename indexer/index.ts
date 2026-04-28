@@ -19,6 +19,13 @@ import { join } from "path";
 
 const app = new Hono();
 const PORT = parseInt(process.env.INDEXER_PORT || "3001");
+const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
+  ".md",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+]);
 
 // ── 静态文件 ──────────────────────────────────────────────────────────
 app.use("/static/*", serveStatic({ root: "./indexer" }));
@@ -104,15 +111,20 @@ app.post("/api/index/directory", async (c) => {
   });
 });
 
-// ── API: 上传并索引 Markdown 文件 ─────────────────────────────────────
+// ── API: 上传并索引 Markdown / 图片文件 ───────────────────────────────
 app.post("/api/upload", async (c) => {
   const formData = await c.req.formData();
   const file = formData.get("file") as File | null;
   const category = (formData.get("category") as string) || "general";
 
   if (!file) return c.json({ ok: false, error: "No file" }, 400);
-  if (!file.name.endsWith(".md"))
-    return c.json({ ok: false, error: "仅支持 .md 文件" }, 400);
+  const ext = getFileExtension(file.name);
+  if (!SUPPORTED_UPLOAD_EXTENSIONS.has(ext)) {
+    return c.json(
+      { ok: false, error: "仅支持 .md、.png、.jpg、.jpeg、.webp 文件" },
+      400
+    );
+  }
 
   // 保存到临时目录
   const tmpPath = join("/tmp", `kb_upload_${Date.now()}_${file.name}`);
@@ -152,3 +164,8 @@ export default {
   port: PORT,
   fetch: app.fetch,
 };
+
+function getFileExtension(fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  return dot >= 0 ? fileName.slice(dot).toLowerCase() : "";
+}
