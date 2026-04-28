@@ -50,4 +50,22 @@ LLM_PROVIDER=ollama
 LLM_API_URL=http://localhost:11434/v1
 LLM_API_KEY=ollama
 LLM_MODEL=qwen2.5:7b
+
+# 通用缓存配置（检索缓存与 /api/ask 回答缓存默认共用）
+CACHE_MAX_SIZE=500
+CACHE_TTL_MS=600000
+
+# 如需单独覆盖 /api/ask 的回答缓存，再按需添加：
+# ASK_CACHE_MAX_SIZE=200
+# ASK_CACHE_TTL_MS=600000
+
+# Debug（仅在 DEBUG 时打印检索 / LLM 分阶段耗时日志）
+DEBUG=false
 ```
+
+## 缓存说明
+
+- `search/retriever.ts` 会缓存重复查询的检索结果，减少 Postgres 检索与 embedding 压力。
+- `search/index.ts` 会缓存 `/api/ask` 的最终回答，命中后可直接回放相同的来源与回答内容。
+- 默认情况下，两层缓存共用 `CACHE_MAX_SIZE` / `CACHE_TTL_MS`；只有在需要细分时，才配置 `ASK_CACHE_*` 覆盖回答缓存。
+- 将 `DEBUG=true` 写入 `.env` 后，可在控制台看到 `retrieve_ms`、`llm_first_token_ms`、`llm_ms`、`total_ms` 等阶段耗时。

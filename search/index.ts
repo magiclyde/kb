@@ -8,10 +8,17 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { stream } from "hono/streaming";
 import { retrieve } from "./retriever";
+import { LRUCache } from "./cache";
 import { join } from "path";
 
 const app = new Hono();
 const PORT = parseInt(process.env.SEARCH_PORT || "3000");
+
+// ── Debug helpers ─────────────────────────────────────────────────────
+function isDebugEnabled() {
+  const v = (process.env.DEBUG || "").toLowerCase().trim();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
 
 // ── LLM 配置策略 ──────────────────────────────────────────────────────
 const LLM_CONFIG = {
@@ -20,6 +27,39 @@ const LLM_CONFIG = {
   apiKey: process.env.LLM_API_KEY || "ollama",
   model: process.env.LLM_MODEL || "qwen2.5:7b",
 };
+
+// ── /api/ask 缓存（回答级别）───────────────────────────────────────────
+type AskCacheValue = {
+  sources: Array<{
+    id: string;
+    docTitle: string;
+    heading: string;
+    rrfScore: number;
+    bm25Score: number | null;
+    vectorScore: number | null;
+  }>;
+  answer: string;
+};
+
+const askCache = new LRUCache<string, AskCacheValue>({
+  maxSize: parseInt(process.env.ASK_CACHE_MAX_SIZE || process.env.CACHE_MAX_SIZE || "500"),
+  ttlMs: parseInt(process.env.ASK_CACHE_TTL_MS || process.env.CACHE_TTL_MS || "600000"), // 默认复用通用缓存配置
+});
+
+function makeAskCacheKey(params: {
+  q: string;
+  category?: string;
+  provider: string;
+  model: string;
+}) {
+  const normQ = params.q.trim().toLowerCase();
+  return [
+    normQ,
+    params.category ?? "*",
+    params.provider,
+    params.model,
+  ].join("|");
+}
 
 /**
  * 获取特定 Provider 的请求参数
@@ -119,25 +159,53 @@ app.get("/api/ask", async (c) => {
     const send = (type: string, data: unknown) =>
       s.write(`data: ${JSON.stringify({ type, data })}\n\n`);
 
+    const debug = isDebugEnabled();
+    const t0 = Date.now();
+    const model = LLM_CONFIG.model;
+    const askKey = makeAskCacheKey({ q: query, category, provider: providerParam, model });
+
     try {
+      // ── 0. 回答缓存命中：直接回放 SSE ──────────────────────────
+      const cachedAsk = askCache.get(askKey);
+      if (cachedAsk) {
+        send("status", "正在检索知识库…");
+        send("sources", cachedAsk.sources);
+        send("answer_chunk", cachedAsk.answer);
+        send("done", null);
+        if (debug) {
+          console.log(
+            `[ask][cache_hit] q="${query}" total_ms=${Date.now() - t0} sources=${cachedAsk.sources.length}`
+          );
+        }
+        return;
+      }
+
       // ── 1. 检索相关块 ──────────────────────────────────────────
       send("status", "正在检索知识库…");
+      const tRetrieveStart = Date.now();
       const chunks = await retrieve(query, { topK: 5, category });
+      const tRetrieveEnd = Date.now();
 
       if (chunks.length === 0) {
         send("answer_chunk", "抱歉，知识库中没有找到与您问题相关的内容。");
         send("done", null);
+        if (debug) {
+          console.log(
+            `[ask][no_sources] q="${query}" retrieve_ms=${tRetrieveEnd - tRetrieveStart} total_ms=${Date.now() - t0}`
+          );
+        }
         return;
       }
 
-      send("sources", chunks.map(c => ({
+      const sources = chunks.map(c => ({
         id: String(c.id),
         docTitle: c.docTitle,
         heading: c.heading,
         rrfScore: c.rrfScore,
         bm25Score: c.bm25Score,
         vectorScore: c.vectorScore,
-      })));
+      }));
+      send("sources", sources);
 
       // ── 2. 构建 Prompt ─────────────────────────────────────────
       const context = chunks
@@ -161,6 +229,7 @@ app.get("/api/ask", async (c) => {
       const llmTimeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || "120000");
       const aborter = new AbortController();
       const timeout = setTimeout(() => aborter.abort(), llmTimeoutMs);
+      const tLlmStart = Date.now();
       const llmRes = await fetch(spec.url, {
         method: "POST",
         headers: spec.headers,
@@ -172,6 +241,11 @@ app.get("/api/ask", async (c) => {
         const err = await llmRes.text();
         send("error", `LLM error: ${err}`);
         send("done", null);
+        if (debug) {
+          console.log(
+            `[ask][llm_error] q="${query}" retrieve_ms=${tRetrieveEnd - tRetrieveStart} llm_ms=${Date.now() - tLlmStart} total_ms=${Date.now() - t0}`
+          );
+        }
         return;
       }
 
@@ -179,6 +253,8 @@ app.get("/api/ask", async (c) => {
       const reader = llmRes.body!.getReader();
       const decoder = new TextDecoder();
       let buf = "";
+      let answerText = "";
+      let tFirstToken: number | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -194,15 +270,34 @@ app.get("/api/ask", async (c) => {
           try {
             const evt = JSON.parse(raw);
             const delta = spec.parse(evt);
-            if (delta) send("answer_chunk", delta);
+            if (delta) {
+              if (tFirstToken === null) tFirstToken = Date.now();
+              answerText += delta;
+              send("answer_chunk", delta);
+            }
           } catch {}
         }
       }
 
       send("done", null);
+      // 仅在成功完成后写入回答缓存
+      if (answerText.trim().length > 0) {
+        askCache.set(askKey, { sources, answer: answerText });
+      }
+
+      if (debug) {
+        const tEnd = Date.now();
+        const firstTokenMs = tFirstToken ? tFirstToken - tLlmStart : null;
+        console.log(
+          `[ask][ok] q="${query}" retrieve_ms=${tRetrieveEnd - tRetrieveStart} llm_first_token_ms=${firstTokenMs ?? "null"} llm_ms=${tEnd - tLlmStart} total_ms=${tEnd - t0}`
+        );
+      }
     } catch (e: any) {
       send("error", e.message);
       send("done", null);
+      if (debug) {
+        console.log(`[ask][exception] q="${query}" total_ms=${Date.now() - t0} err="${e?.message || e}"`);
+      }
     }
   });
 });
