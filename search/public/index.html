@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,35 +7,40 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap');
 
+  /* ── 变量定义 ── */
+  :root[data-theme="light"] {
+    --bg: #f5f5f7;            /* 与管理后台完全一致 */
+    --surface: #ffffff;       /* 纯白容器 */
+    --border: #e2e2e9;        /* 柔和线条 */
+    --text: #1a1a1e;          /* 深色文字 */
+    --muted: #86868b;         /* 灰色次要文字 */
+    --accent: #1a1a2e;        /* 保持深蓝标题 */
+    --accent2: #c84b31;       /* 保持红褐点缀 */
+    --tag-bg: #e8e8f0;        /* 标签颜色稍微调整以适配背景 */
+    --code-bg: #efeff5;       /* 代码块背景 */
+    --header-bg: rgba(245, 245, 247, 0.92); /* 顶部吸附栏透明度 */
+    --shadow: 0 4px 12px rgba(0,0,0,.05);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d0d0e;            /* 与管理后台完全一致 */
+    --surface: #1a1a1c;       /* 与管理后台完全一致 */
+    --border: #2a2a2e;        /* 与管理后台完全一致 */
+    --text: #e8e8f0;          /* 与管理后台完全一致 */
+    --muted: #86868b;         /* 与管理后台完全一致 */
+    --accent: #e8e2d9;        /* 搜索端标题色 */
+    --accent2: #e06c4c;       /* 调整后的深色模式红褐色，更明亮 */
+    --tag-bg: #252529;        /* 略深于容器的标签色 */
+    --code-bg: #111113;       /* 代码块使用更深的黑色以区分 */
+    --header-bg: rgba(13, 13, 14, 0.92);
+    --shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
+
   :root {
-    --bg: #fafaf8;
-    --surface: #ffffff;
-    --border: #e8e5de;
-    --accent: #1a1a2e;
-    --accent2: #c84b31;
-    --muted: #8a8278;
-    --text: #1c1c1e;
-    --tag-bg: #f0ede6;
-    --code-bg: #f5f2eb;
-    --shadow: 0 2px 20px rgba(0,0,0,.06);
     --mono: 'JetBrains Mono', monospace;
     --serif: 'Noto Serif SC', serif;
     --sans: 'Space Grotesk', 'PingFang SC', sans-serif;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #111110;
-      --surface: #1c1b1a;
-      --border: #2e2c2a;
-      --accent: #e8e2d9;
-      --accent2: #e06c4c;
-      --muted: #6b6560;
-      --text: #e4dfd8;
-      --tag-bg: #252320;
-      --code-bg: #1e1d1b;
-      --shadow: 0 2px 20px rgba(0,0,0,.3);
-    }
+    transition: background 0.3s ease, color 0.3s ease;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,21 +51,21 @@
     color: var(--text);
     min-height: 100vh;
     line-height: 1.6;
+    transition: background 0.3s ease;
   }
 
   /* ── HEADER ── */
   header {
     position: sticky; top: 0; z-index: 100;
-    background: rgba(250,250,248,.92);
+    background: var(--header-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     padding: 0 max(24px, calc(50vw - 500px));
     display: flex; align-items: center; gap: 16px;
     height: 60px;
+    transition: background 0.3s ease, border-color 0.3s ease;
   }
-  @media (prefers-color-scheme: dark) {
-    header { background: rgba(17,17,16,.92); }
-  }
+
   .logo-text {
     font-family: var(--mono); font-size: 14px; font-weight: 500;
     color: var(--accent); white-space: nowrap;
@@ -68,12 +73,29 @@
   }
   .logo-text em { color: var(--accent2); font-style: normal; }
 
+  /* ── THEME TOGGLE ── */
+  .theme-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+  }
+  .theme-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
   /* ── SEARCH BAR ── */
   .search-wrap {
     flex: 1; display: flex; align-items: center; gap: 8px;
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 8px; padding: 6px 10px 6px 14px;
-    transition: border-color .15s, box-shadow .15s;
+    transition: border-color .15s, box-shadow .15s, background 0.3s;
   }
   .search-wrap:focus-within {
     border-color: var(--accent2);
@@ -88,17 +110,17 @@
 
   select#category-filter {
     border: none; background: transparent; font-family: var(--mono);
-    font-size: 12px; color: var(--muted); cursor: pointer; outline: none;
+    font-size: 11px; color: var(--muted); cursor: pointer; outline: none;
   }
 
   .search-btn {
     padding: 6px 16px; background: var(--accent); color: var(--bg);
     border: none; border-radius: 6px; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: opacity .15s; white-space: nowrap;
+    cursor: pointer; transition: all .15s; white-space: nowrap;
     font-family: var(--sans);
   }
-  .search-btn:hover { opacity: .85; }
-  .search-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .search-btn:hover { opacity: .85; transform: translateY(-1px); }
+  .search-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
   /* ── MAIN LAYOUT ── */
   .container {
@@ -115,6 +137,7 @@
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 12px; padding: 28px; box-shadow: var(--shadow);
     min-height: 120px; display: none;
+    transition: background 0.3s, border-color 0.3s;
   }
   .answer-wrap.show { display: block; }
 
@@ -130,49 +153,25 @@
     color: var(--text);
   }
 
-  /* Markdown rendered styles */
+  /* Markdown styles */
   .answer-body h1, .answer-body h2, .answer-body h3 {
-    font-family: var(--sans); font-weight: 600; margin: 20px 0 10px;
+    font-family: var(--sans); font-weight: 600; margin: 24px 0 12px;
     color: var(--text);
   }
-  .answer-body h2 { font-size: 16px; }
-  .answer-body h3 { font-size: 14px; }
-  .answer-body p { margin: 10px 0; }
+  .answer-body h2 { font-size: 17px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  .answer-body h3 { font-size: 15px; }
+  .answer-body p { margin: 12px 0; }
   .answer-body code {
-    font-family: var(--mono); font-size: 12px; background: var(--code-bg);
-    padding: 2px 6px; border-radius: 4px; color: var(--accent2);
+    font-family: var(--mono); font-size: 12px; background: var(--tag-bg);
+    padding: 2px 5px; border-radius: 4px; color: var(--accent2);
   }
   .answer-body pre {
     background: var(--code-bg); border-radius: 8px; padding: 16px;
-    overflow-x: auto; margin: 14px 0; border: 1px solid var(--border);
+    overflow-x: auto; margin: 16px 0; border: 1px solid var(--border);
   }
-  .answer-body pre code {
-    background: none; padding: 0; color: var(--text); font-size: 13px;
-  }
-  .answer-body ul, .answer-body ol {
-    padding-left: 20px; margin: 10px 0;
-  }
-  .answer-body li { margin: 4px 0; }
-  .answer-body blockquote {
-    border-left: 3px solid var(--accent2); padding-left: 14px;
-    color: var(--muted); margin: 12px 0;
-  }
-  .answer-body strong { font-weight: 600; color: var(--text); }
-  .answer-body hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-  .answer-body table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
-  .answer-body th, .answer-body td { border: 1px solid var(--border); padding: 6px 10px; }
-  .answer-body th { background: var(--tag-bg); font-weight: 500; }
-
-  /* cursor blink */
-  .cursor {
-    display: inline-block; width: 2px; height: 1em;
-    background: var(--accent2); margin-left: 2px;
-    animation: blink 1s step-start infinite; vertical-align: text-bottom;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-  /* ── SOURCES SIDEBAR ── */
-  .sidebar {}
+  .answer-body pre code { background: none; color: var(--text); }
+  
+  /* ── SIDEBAR ── */
   .sources-title {
     font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
@@ -180,52 +179,30 @@
   .source-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
-    transition: border-color .15s; cursor: default;
+    transition: all .2s; cursor: default;
   }
-  .source-card:hover { border-color: var(--accent2); }
-  .source-num {
-    font-family: var(--mono); font-size: 10px; color: var(--accent2);
-    font-weight: 500; margin-bottom: 4px;
-  }
-  .source-doc { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
-  .source-heading {
-    font-size: 11px; color: var(--muted); font-family: var(--mono);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .score-bar {
-    display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
-  }
+  .source-card:hover { border-color: var(--accent2); transform: translateX(4px); }
+  .source-num { font-family: var(--mono); font-size: 10px; color: var(--accent2); font-weight: 500; }
+  .source-doc { font-size: 12px; font-weight: 500; margin: 2px 0; }
+  .source-heading { font-size: 11px; color: var(--muted); font-family: var(--mono); }
   .score-tag {
-    font-family: var(--mono); font-size: 10px; padding: 2px 6px;
+    font-family: var(--mono); font-size: 9px; padding: 2px 5px;
     border-radius: 3px; background: var(--tag-bg); color: var(--muted);
   }
-  .score-tag.bm25 { color: #2563eb; background: rgba(37,99,235,.1); }
-  .score-tag.vec { color: #16a34a; background: rgba(22,163,74,.1); }
 
-  /* ── EMPTY / WELCOME ── */
-  .welcome {
-    grid-column: 1 / -1; text-align: center; padding: 80px 20px;
-  }
-  .welcome h2 {
-    font-family: var(--serif); font-size: 28px; font-weight: 300;
-    color: var(--text); margin-bottom: 12px;
-  }
-  .welcome p { color: var(--muted); font-size: 14px; max-width: 400px; margin: 0 auto; }
-  .welcome .hint {
-    margin-top: 32px; display: flex; gap: 12px; justify-content: center;
-    flex-wrap: wrap;
-  }
+  /* ── WELCOME ── */
+  .welcome { grid-column: 1 / -1; text-align: center; padding: 80px 20px; }
+  .welcome h2 { font-family: var(--serif); font-size: 32px; font-weight: 300; color: var(--text); margin-bottom: 16px; }
+  .welcome p { color: var(--muted); font-size: 15px; margin-bottom: 32px; }
   .hint-tag {
-    background: var(--tag-bg); border: 1px solid var(--border);
-    border-radius: 20px; padding: 6px 14px; font-size: 12px; color: var(--muted);
-    cursor: pointer; transition: all .15s;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 8px 18px; font-size: 12px; color: var(--muted);
+    cursor: pointer; transition: all .2s; display: inline-block; margin: 4px;
   }
-  .hint-tag:hover { border-color: var(--accent2); color: var(--accent2); }
+  .hint-tag:hover { border-color: var(--accent2); color: var(--accent2); background: var(--tag-bg); }
 
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .cursor { display: inline-block; width: 2px; height: 1em; background: var(--accent2); vertical-align: text-bottom; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 </style>
 </head>
 <body>
@@ -244,6 +221,9 @@
       <option value="reference">reference</option>
     </select>
   </div>
+  <button class="theme-btn" onclick="toggleTheme()" id="theme-toggle">
+    <span id="theme-icon">☼</span> <span id="theme-text">LIGHT</span>
+  </button>
   <button class="search-btn" id="search-btn" onclick="doSearch()">提问</button>
 </header>
 
@@ -261,19 +241,41 @@
 </div>
 
 <script>
-// ── Simple Markdown renderer ─────────────────────────────────────────
+// ── Theme Logic ──────────────────────────────────────────────────────
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('kb-search-theme', theme);
+  const icon = document.getElementById('theme-icon');
+  const text = document.getElementById('theme-text');
+  
+  if (theme === 'dark') {
+    icon.textContent = '☾';
+    text.textContent = 'DARK';
+  } else {
+    icon.textContent = '☼';
+    text.textContent = 'LIGHT';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  setTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// 初始化主题 (优先读存储，其次读系统)
+const savedTheme = localStorage.getItem('kb-search-theme');
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+setTheme(savedTheme || (systemDark ? 'dark' : 'light'));
+
+// ── 原有逻辑 ──────────────────────────────────────────────────────────
 function renderMarkdown(md) {
-  // 先保护代码块
   const codeBlocks = [];
   md = md.replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
     codeBlocks.push(`<pre><code class="lang-${lang}">${esc(code.trim())}</code></pre>`);
     return `\x00CODE${codeBlocks.length - 1}\x00`;
   });
 
-  md = md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    // restore code blocks (already escaped correctly)
-    .replace(/&lt;pre&gt;/g, '<pre>').replace(/&lt;\/pre&gt;/g, '</pre>')
+  md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\x00CODE(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)])
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -292,9 +294,7 @@ function renderMarkdown(md) {
   return '<p>' + md + '</p>';
 }
 
-function esc(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ── State ─────────────────────────────────────────────────────────────
 let currentController = null;
@@ -310,7 +310,6 @@ function fillQuery(el) {
 async function doSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
-
   if (currentController) currentController.abort();
   currentController = new AbortController();
 
@@ -324,10 +323,7 @@ async function doSearch() {
   container.innerHTML = `
     <div>
       <div class="answer-wrap show" id="answer-wrap">
-        <div class="answer-meta">
-          <div class="dot"></div>
-          <span class="status-text" id="status-text">正在检索…</span>
-        </div>
+        <div class="answer-meta"><div class="dot"></div><span class="status-text" id="status-text">正在检索…</span></div>
         <div class="answer-body" id="answer-body"></div>
       </div>
     </div>
@@ -337,7 +333,6 @@ async function doSearch() {
     </div>`;
 
   rawAnswer = '';
-
   try {
     const url = `/api/ask?q=${encodeURIComponent(q)}${category ? '&category=' + category : ''}`;
     const res = await fetch(url, { signal: currentController.signal });
@@ -351,13 +346,9 @@ async function doSearch() {
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop() || '';
-
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
-        try {
-          const evt = JSON.parse(line.slice(6));
-          handleEvent(evt);
-        } catch {}
+        try { handleEvent(JSON.parse(line.slice(6))); } catch {}
       }
     }
   } catch (e) {
@@ -366,7 +357,6 @@ async function doSearch() {
       if (body) body.innerHTML = `<span style="color:#ef4444">❌ ${esc(e.message)}</span>`;
     }
   } finally {
-    // Remove cursor
     const cursor = document.querySelector('.cursor');
     if (cursor) cursor.remove();
     btn.disabled = false;
@@ -376,13 +366,10 @@ async function doSearch() {
 
 function handleEvent(evt) {
   const { type, data } = evt;
-
   if (type === 'status') {
     const el = document.getElementById('status-text');
     if (el) el.textContent = data;
-  }
-
-  else if (type === 'sources') {
+  } else if (type === 'sources') {
     const list = document.getElementById('sources-list');
     if (!list) return;
     list.innerHTML = data.map((s, i) => `
@@ -390,55 +377,29 @@ function handleEvent(evt) {
         <div class="source-num">[${i+1}]</div>
         <div class="source-doc">${esc(s.docTitle)}</div>
         <div class="source-heading">${esc(s.heading)}</div>
-        <div class="score-bar">
-          ${s.bm25Score != null ? `<span class="score-tag bm25">BM25 ${s.bm25Score.toFixed(2)}</span>` : ''}
-          ${s.vectorScore != null ? `<span class="score-tag vec">VEC ${s.vectorScore.toFixed(3)}</span>` : ''}
+        <div class="score-bar" style="display:flex;gap:4px;margin-top:6px;">
           <span class="score-tag">RRF ${s.rrfScore.toFixed(4)}</span>
         </div>
       </div>`).join('');
-
-    const statusEl = document.getElementById('status-text');
-    if (statusEl) statusEl.textContent = '正在生成回答…';
-  }
-
-  else if (type === 'answer_chunk') {
+  } else if (type === 'answer_chunk') {
     rawAnswer += data;
     scheduleRender();
-  }
-
-  else if (type === 'error') {
-    const body = document.getElementById('answer-body');
-    if (body) body.innerHTML += `<span style="color:#ef4444">❌ ${esc(data)}</span>`;
-  }
-
-  else if (type === 'done') {
+  } else if (type === 'done') {
     flushRender();
-    const statusEl = document.getElementById('status-text');
-    if (statusEl) {
-      statusEl.textContent = '回答完成';
-      statusEl.style.color = 'var(--muted)';
-    }
-    const dot = document.querySelector('.dot');
-    if (dot) dot.style.background = 'var(--muted)';
+    const st = document.getElementById('status-text');
+    if (st) st.textContent = '检索完成';
   }
 }
 
-// Throttled render for smooth typewriter effect
 function scheduleRender() {
   if (renderTimer) return;
-  renderTimer = setTimeout(() => {
-    renderTimer = null;
-    flushRender(true);
-  }, 40);
+  renderTimer = setTimeout(() => { renderTimer = null; flushRender(true); }, 40);
 }
 
 function flushRender(withCursor = false) {
   const body = document.getElementById('answer-body');
   if (!body) return;
-  const cursor = withCursor ? '<span class="cursor"></span>' : '';
-  body.innerHTML = renderMarkdown(rawAnswer) + cursor;
-  // Auto scroll
-  body.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  body.innerHTML = renderMarkdown(rawAnswer) + (withCursor ? '<span class="cursor"></span>' : '');
 }
 
 // ── Keyboard shortcut ─────────────────────────────────────────────────

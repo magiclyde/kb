@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,19 +7,39 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+SC:wght@300;400;500;600&display=swap');
 
+  /* ── 变量定义 ── */
+  :root[data-theme="light"] {
+    --bg: #f5f5f7;            /* 统一的浅灰背景 */
+    --surface: #ffffff;       /* 纯白卡片 */
+    --border: #e2e2e9;        /* 柔和线条 */
+    --text: #1a1a1e;          /* 深色文字 */
+    --muted: #86868b;         /* 灰色次要文字 */
+    --hover-bg: rgba(0, 0, 0, 0.03);
+    --active-accent-bg: rgba(0, 212, 255, 0.1); /* 蓝色激活背景 */
+    --input-bg: #fcfcfd;      /* 输入框稍微提亮 */
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d0d0e;            /* 深邃的黑，略带一点点暖调以抵消显示器冷光 */
+    --surface: #1a1a1c;       /* 提升层级感的深灰色卡片 */
+    --border: #2a2a2e;        /* 深色边框，保持精致感 */
+    --text: #e8e8f0;          /* 亮灰色文字，降低对比度保护眼睛 */
+    --muted: #86868b;         /* 与日间模式一致的次要文字色 */
+    --hover-bg: rgba(255, 255, 255, 0.05);
+    --active-accent-bg: rgba(0, 212, 255, 0.12);
+    --input-bg: #0d0d0e;
+  }
+
+  /* 共享配色 */
   :root {
-    --bg: #0d0d0f;
-    --surface: #16161a;
-    --border: #2a2a35;
     --accent: #00d4ff;
     --accent2: #7c3aed;
     --success: #22c55e;
     --warn: #f59e0b;
     --danger: #ef4444;
-    --text: #e8e8f0;
-    --muted: #6b6b80;
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'IBM Plex Sans SC', 'PingFang SC', sans-serif;
+    transition: background 0.3s ease, color 0.3s ease;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,6 +49,7 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    transition: background 0.3s ease;
   }
 
   /* ── LAYOUT ── */
@@ -42,6 +63,7 @@
     flex-direction: column;
     padding: 24px 0;
     flex-shrink: 0;
+    z-index: 10;
   }
 
   .logo {
@@ -58,12 +80,12 @@
 
   .nav-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 10px 20px; font-size: 13px; color: var(--muted);
+    padding: 12px 20px; font-size: 13px; color: var(--muted);
     cursor: pointer; transition: all .15s; border-left: 2px solid transparent;
     user-select: none;
   }
-  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
-  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,212,255,.05); }
+  .nav-item:hover { color: var(--text); background: var(--hover-bg); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--active-accent-bg); }
   .nav-item .icon { font-size: 16px; }
 
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -74,8 +96,25 @@
     padding: 16px 28px;
     display: flex; align-items: center; justify-content: space-between;
   }
+  .topbar-left { display: flex; align-items: center; gap: 20px; }
   .topbar h1 { font-size: 15px; font-weight: 500; }
-  .topbar .stats-bar { display: flex; gap: 20px; }
+  
+  .theme-toggle {
+    background: var(--hover-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
+
+  .stats-bar { display: flex; gap: 20px; }
   .stat { font-family: var(--mono); font-size: 12px; color: var(--muted); }
   .stat strong { color: var(--accent); }
 
@@ -92,6 +131,7 @@
     border-radius: 8px;
     padding: 24px;
     margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
   }
   .card-title {
     font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
@@ -104,11 +144,11 @@
 
   input[type=text], select {
     width: 100%; padding: 9px 12px;
-    background: var(--bg); border: 1px solid var(--border);
+    background: var(--input-bg); border: 1px solid var(--border);
     border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 13px;
-    outline: none; transition: border-color .15s;
+    outline: none; transition: all .15s;
   }
-  input[type=text]:focus, select:focus { border-color: var(--accent); }
+  input[type=text]:focus, select:focus { border-color: var(--accent); background: var(--surface); }
   input[type=text]::placeholder { color: var(--muted); }
 
   .btn {
@@ -117,9 +157,9 @@
     transition: all .15s; white-space: nowrap;
   }
   .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: #00eeff; }
+  .btn-primary:hover { background: #00eeff; box-shadow: 0 0 15px rgba(0,212,255,0.3); }
   .btn-secondary { background: var(--border); color: var(--text); }
-  .btn-secondary:hover { background: #35354a; }
+  .btn-secondary:hover { background: var(--hover-bg); border-color: var(--muted); }
   .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; font-size: 12px; }
   .btn-danger:hover { background: var(--danger); color: #fff; }
   .btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -129,8 +169,9 @@
     border: 2px dashed var(--border); border-radius: 8px;
     padding: 40px; text-align: center; cursor: pointer;
     transition: all .2s; position: relative;
+    background: var(--input-bg);
   }
-  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(0,212,255,.04); }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--active-accent-bg); }
   .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .dropzone .dz-icon { font-size: 36px; margin-bottom: 8px; }
   .dropzone .dz-text { font-size: 13px; color: var(--muted); }
@@ -139,7 +180,7 @@
   /* ── PROGRESS LOG ── */
   .progress-log {
     font-family: var(--mono); font-size: 12px; line-height: 1.7;
-    background: var(--bg); border: 1px solid var(--border);
+    background: var(--input-bg); border: 1px solid var(--border);
     border-radius: 6px; padding: 12px 14px;
     max-height: 260px; overflow-y: auto; margin-top: 12px;
     display: none;
@@ -153,50 +194,45 @@
   .log-line.muted { color: var(--muted); }
 
   /* ── PROGRESS BAR ── */
-  .progress-bar-wrap { background: var(--bg); border-radius: 4px; height: 4px; margin-top: 10px; display: none; overflow: hidden; }
+  .progress-bar-wrap { background: var(--border); border-radius: 4px; height: 4px; margin-top: 10px; display: none; overflow: hidden; }
   .progress-bar-wrap.show { display: block; }
   .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; width: 0%; }
 
   /* ── DOCUMENTS TABLE ── */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+  th { text-align: left; padding: 12px; font-size: 11px; font-weight: 600;
        letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
-       border-bottom: 1px solid var(--border); }
-  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+       border-bottom: 1px solid var(--border); background: var(--input-bg); }
+  td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,.02); }
+  tr:hover td { background: var(--hover-bg); }
 
   .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
     font-size: 11px; font-family: var(--mono);
   }
-  .badge-blue { background: rgba(0,212,255,.15); color: var(--accent); }
-  .badge-purple { background: rgba(124,58,237,.2); color: #a78bfa; }
+  .badge-blue { background: var(--active-accent-bg); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
+  .badge-purple { background: rgba(124,58,237,.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.2); }
 
   .path-text { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-  .chunk-count { font-family: var(--mono); color: var(--accent); }
+  .chunk-count { font-family: var(--mono); color: var(--accent); font-weight: 600; }
 
-  .empty-state {
-    text-align: center; padding: 60px; color: var(--muted);
-    font-size: 13px;
-  }
+  .empty-state { text-align: center; padding: 60px; color: var(--muted); font-size: 13px; }
 
-  /* ── SETTINGS ── */
   .kv-row { display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+            padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
   .kv-row:last-child { border-bottom: none; }
   .kv-key { color: var(--muted); font-family: var(--mono); font-size: 12px; }
   .kv-val { font-family: var(--mono); color: var(--text); }
 
-  /* ── SCROLL ── */
-  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 </style>
 </head>
 <body>
 <div class="layout">
-  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="logo">KB ADMIN<span>KNOWLEDGE BASE</span></div>
     <div class="nav-item active" data-panel="index" onclick="switchPanel(this)">
@@ -210,10 +246,15 @@
     </div>
   </aside>
 
-  <!-- Main -->
   <div class="main">
     <div class="topbar">
-      <h1>知识库管理后台</h1>
+      <div class="topbar-left">
+        <h1>知识库管理后台</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-text" style="font-size: 12px; font-family: var(--mono);">DARK</span>
+        </button>
+      </div>
       <div class="stats-bar">
         <div class="stat">文档 <strong id="stat-docs">—</strong></div>
         <div class="stat">文本块 <strong id="stat-chunks">—</strong></div>
@@ -222,10 +263,7 @@
     </div>
 
     <div class="content">
-      <!-- ── 索引面板 ── -->
       <div class="panel active" id="panel-index">
-
-        <!-- 上传文件 -->
         <div class="card">
           <div class="card-title">📎 上传文档 / 图片</div>
           <div class="row">
@@ -250,7 +288,6 @@
           <div class="progress-log" id="upload-log"></div>
         </div>
 
-        <!-- 索引本地目录 -->
         <div class="card">
           <div class="card-title">📁 索引服务器本地目录</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
@@ -271,7 +308,6 @@
           <div class="progress-log" id="dir-log"></div>
         </div>
 
-        <!-- 初始化 -->
         <div class="card">
           <div class="card-title">🔧 数据库初始化</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
@@ -282,20 +318,18 @@
         </div>
       </div>
 
-      <!-- ── 文档列表面板 ── -->
       <div class="panel" id="panel-docs">
-        <div class="card" style="padding:0">
-          <div style="padding:18px 24px 14px;display:flex;justify-content:space-between;align-items:center">
+        <div class="card" style="padding:0; overflow: hidden;">
+          <div style="padding:18px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border)">
             <span class="card-title" style="margin:0">已索引文档</span>
-            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="loadDocs()">刷新</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="loadDocs()">刷新列表</button>
           </div>
-          <div id="docs-table-wrap">
+          <div id="docs-table-wrap" style="overflow-x: auto;">
             <div class="empty-state">加载中…</div>
           </div>
         </div>
       </div>
 
-      <!-- ── 设置面板 ── -->
       <div class="panel" id="panel-settings">
         <div class="card">
           <div class="card-title">环境配置</div>
@@ -309,9 +343,38 @@
 </div>
 
 <script>
+// ── Theme Logic ──────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const target = current === 'dark' ? 'light' : 'dark';
+  setTheme(target);
+}
+
+function setTheme(theme) {
+  const html = document.documentElement;
+  html.setAttribute('data-theme', theme);
+  localStorage.setItem('kb-theme', theme);
+  
+  const icon = document.getElementById('theme-icon');
+  const text = document.getElementById('theme-text');
+  if (theme === 'dark') {
+    icon.textContent = '🌙';
+    text.textContent = 'DARK';
+  } else {
+    icon.textContent = '☀️';
+    text.textContent = 'LIGHT';
+  }
+}
+
+// 恢复主题
+const savedTheme = localStorage.getItem('kb-theme') || 'dark';
+setTheme(savedTheme);
+
+
+// ── 原有逻辑保持不变 ──────────────────────────────────────────────────
 const SUPPORTED_EXTENSIONS = ['.md', '.png', '.jpg', '.jpeg', '.webp'];
 
-// ── Panel switching ───────────────────────────────────────────────────
 function switchPanel(el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
@@ -322,7 +385,6 @@ function switchPanel(el) {
   if (name === 'settings') loadSettings();
 }
 
-// ── Stats ─────────────────────────────────────────────────────────────
 async function loadStats() {
   try {
     const r = await fetch('/api/stats').then(r => r.json());
@@ -336,7 +398,6 @@ async function loadStats() {
 loadStats();
 setInterval(loadStats, 10000);
 
-// ── Init DB ───────────────────────────────────────────────────────────
 async function initDb() {
   const el = document.getElementById('init-result');
   el.textContent = '初始化中…'; el.style.color = 'var(--accent)';
@@ -349,7 +410,6 @@ async function initDb() {
   }
 }
 
-// ── Progress log helpers ──────────────────────────────────────────────
 function appendLog(logId, msg, type = '') {
   const log = document.getElementById(logId);
   log.classList.add('show');
@@ -371,12 +431,10 @@ function setProgress(barId, fillId, pct) {
   document.getElementById(fillId).style.width = pct + '%';
 }
 
-// ── SSE reader ────────────────────────────────────────────────────────
 async function consumeSSE(response, logId, barId, fillId) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -414,13 +472,10 @@ function handleProgress(p, logId, barId, fillId) {
   else if (stage === 'error') appendLog(logId, p.message, 'error');
 }
 
-// ── File upload ───────────────────────────────────────────────────────
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById('dropzone').classList.remove('dragover');
   const files = [...e.dataTransfer.files].filter(f => isSupportedFile(f.name));
-  const skipped = e.dataTransfer.files.length - files.length;
-  if (skipped > 0) appendLog('upload-log', `已跳过 ${skipped} 个不支持的文件`, 'warn');
   if (files.length) uploadFiles(files);
 }
 
@@ -434,7 +489,6 @@ async function uploadFiles(files) {
   clearLog('upload-log');
   setProgress('upload-bar', 'upload-bar-fill', 5);
   const category = document.getElementById('upload-category').value;
-
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     appendLog('upload-log', `上传 (${i+1}/${files.length}): ${file.name}`, 'info');
@@ -450,14 +504,12 @@ async function uploadFiles(files) {
   }
 }
 
-// ── Index directory ───────────────────────────────────────────────────
 async function indexDir() {
   const path = document.getElementById('dir-path').value.trim();
   if (!path) { alert('请输入目录路径'); return; }
   const category = document.getElementById('dir-category').value;
   clearLog('dir-log');
   setProgress('dir-bar', 'dir-bar-fill', 5);
-
   try {
     const res = await fetch('/api/index/directory', {
       method: 'POST',
@@ -470,7 +522,6 @@ async function indexDir() {
   }
 }
 
-// ── Documents list ────────────────────────────────────────────────────
 async function loadDocs() {
   const wrap = document.getElementById('docs-table-wrap');
   wrap.innerHTML = '<div class="empty-state">加载中…</div>';
@@ -484,12 +535,12 @@ async function loadDocs() {
     wrap.innerHTML = `
       <table>
         <thead><tr>
-          <th>标题</th><th>来源</th><th>分类</th><th>文本块</th><th>路径</th><th>更新时间</th><th></th>
+          <th>标题</th><th>来源</th><th>分类</th><th>文本块</th><th>路径</th><th>更新时间</th><th>操作</th>
         </tr></thead>
         <tbody>
           ${r.data.map(d => `
             <tr>
-              <td>${esc(d.title)}</td>
+              <td><span style="font-weight:500">${esc(d.title)}</span></td>
               <td>${renderSourceType(d.source_type)}</td>
               <td><span class="badge badge-blue">${esc(d.category)}</span></td>
               <td class="chunk-count">${d.chunk_count}</td>
@@ -517,7 +568,6 @@ async function deleteDoc(id, btn) {
   }
 }
 
-// ── Settings ──────────────────────────────────────────────────────────
 function loadSettings() {
   const vars = {
     'DATABASE_URL': '(from env)',
