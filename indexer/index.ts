@@ -16,6 +16,8 @@ import {
 import { initSchema } from "../shared/db";
 import { sql } from "../shared/db";
 import { join } from "path";
+import { checkVisionModel } from "../shared/ocr.ts";
+await checkVisionModel(); // 启动时打印模型状态，不影响主流程
 
 const app = new Hono();
 const PORT = parseInt(process.env.INDEXER_PORT || "3001");
@@ -168,6 +170,7 @@ console.log(`🚀 后台管理服务启动: http://localhost:${PORT}`);
 export default {
   port: PORT,
   fetch: app.fetch,
+  idleTimeout: 60,
 };
 
 function getFileExtension(fileName: string): string {
